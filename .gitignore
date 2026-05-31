@@ -1,0 +1,20 @@
+build/
+cmake-build-*/
+.zinc-deps/
+zinc-deps/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Local editor and agent state
+.vscode/
+.idea/
+.codex/
+.agents/
+
+# Generated test and temporary files
+Testing/
+*.tmp
