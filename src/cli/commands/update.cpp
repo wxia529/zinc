@@ -134,9 +134,22 @@ static std::string render_cell(const zinc::core::Structure& s, const std::string
   return oss.str();
 }
 
+static bool has_fixed_atom(const zinc::core::Structure& s) {
+  return std::any_of(s.atoms.begin(), s.atoms.end(), [](const auto& atom) {
+    return atom.constraints && ((*atom.constraints)[0] == 0 ||
+                                (*atom.constraints)[1] == 0 ||
+                                (*atom.constraints)[2] == 0);
+  });
+}
+
+static std::array<int, 3> atom_constraints_or_free(const zinc::core::Atom& atom) {
+  return atom.constraints.value_or(std::array<int, 3>{1, 1, 1});
+}
+
 static std::string render_pos(const zinc::core::Structure& s, const std::string& unit, double alat) {
   std::ostringstream oss;
   oss << std::fixed << std::setprecision(10);
+  const bool write_constraints = has_fixed_atom(s);
   for (const auto& atom : s.atoms) {
     if (unit == "crystal" || unit == "crystal_sg") {
       auto f = s.lattice.cart_to_frac(atom.position);
@@ -145,8 +158,8 @@ static std::string render_pos(const zinc::core::Structure& s, const std::string&
             << std::setw(18) << f->x()
             << std::setw(18) << f->y()
             << std::setw(18) << f->z();
-        if (atom.constraints) {
-          auto& c = *atom.constraints;
+        if (write_constraints) {
+          const auto c = atom_constraints_or_free(atom);
           oss << "   " << c[0] << "   " << c[1] << "   " << c[2];
         }
         oss << "\n";
@@ -157,8 +170,8 @@ static std::string render_pos(const zinc::core::Structure& s, const std::string&
           << std::setw(18) << atom.position.x()*scale
           << std::setw(18) << atom.position.y()*scale
           << std::setw(18) << atom.position.z()*scale;
-      if (atom.constraints) {
-        auto& c = *atom.constraints;
+      if (write_constraints) {
+        const auto c = atom_constraints_or_free(atom);
         oss << "   " << c[0] << "   " << c[1] << "   " << c[2];
       }
       oss << "\n";

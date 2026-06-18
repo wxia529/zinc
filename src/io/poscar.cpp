@@ -4,6 +4,8 @@
 #include <stdexcept>
 #include <cmath>
 #include <iomanip>
+#include <algorithm>
+#include <array>
 
 namespace zinc {
 namespace io {
@@ -132,17 +134,21 @@ void PoscarDriver::write(const core::Structure& structure, const std::filesystem
   for (const auto& e : elems) out << e << " "; out << "\n";
   for (int c : counts) out << c << " "; out << "\n";
 
-  bool has_constraints = std::any_of(structure.atoms.begin(), structure.atoms.end(),
-                                      [](const auto& a) { return a.constraints.has_value(); });
-  if (has_constraints) out << "Selective dynamics\n";
+  bool has_fixed_atom = std::any_of(structure.atoms.begin(), structure.atoms.end(),
+                                    [](const auto& a) {
+                                      return a.constraints && ((*a.constraints)[0] == 0 ||
+                                                               (*a.constraints)[1] == 0 ||
+                                                               (*a.constraints)[2] == 0);
+                                    });
+  if (has_fixed_atom) out << "Selective dynamics\n";
   out << "Cartesian\n";
 
   for (const auto& atom : structure.atoms) {
     out << std::setw(18) << atom.position.x()
         << std::setw(18) << atom.position.y()
         << std::setw(18) << atom.position.z();
-    if (has_constraints && atom.constraints) {
-      auto& c = *atom.constraints;
+    if (has_fixed_atom) {
+      const auto c = atom.constraints.value_or(std::array<int, 3>{1, 1, 1});
       out << "  " << (c[0] ? "T" : "F") << "  " << (c[1] ? "T" : "F") << "  " << (c[2] ? "T" : "F");
     }
     out << "\n";

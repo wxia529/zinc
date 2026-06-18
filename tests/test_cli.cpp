@@ -285,3 +285,35 @@ TEST(CLITest, UpdateAcceptsQEXmlDataFileSchema) {
   EXPECT_NE(text.find("      4.2529271402"), std::string::npos);
   fs::remove(out);
 }
+
+TEST(CLITest, UpdateOmitsQEPositionFlagsWhenAllAtomsFree) {
+  auto source = fs::temp_directory_path() / ("zinc-source-free-" + std::to_string(std::rand()) + ".pwi");
+  auto target = fs::temp_directory_path() / ("zinc-target-free-" + std::to_string(std::rand()) + ".pwi");
+  auto out = fs::temp_directory_path() / ("zinc-updated-free-" + std::to_string(std::rand()) + ".in");
+  const std::string input =
+      "&SYSTEM\n  ibrav = 0\n  nat = 2\n  ntyp = 1\n/\n"
+      "ATOMIC_SPECIES\nSi 28.085 Si.UPF\n"
+      "CELL_PARAMETERS angstrom\n"
+      "3.0 0.0 0.0\n0.0 3.0 0.0\n0.0 0.0 3.0\n"
+      "ATOMIC_POSITIONS angstrom\n"
+      "Si 0.0 0.0 0.0 1 1 1\n"
+      "Si 1.5 1.5 1.5 1 1 1\n";
+  {
+    std::ofstream ofs(source);
+    ofs << input;
+  }
+  {
+    std::ofstream ofs(target);
+    ofs << input;
+  }
+
+  auto r = run_cli("update \"" + source.string() + "\" \"" + target.string() +
+                   "\" -o \"" + out.string() + "\"");
+
+  EXPECT_EQ(r.exit_code, 0);
+  auto text = read_file(out);
+  EXPECT_EQ(text.find("   1   1   1"), std::string::npos);
+  fs::remove(source);
+  fs::remove(target);
+  fs::remove(out);
+}

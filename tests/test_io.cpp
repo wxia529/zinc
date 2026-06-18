@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <stdexcept>
 #include <sstream>
+#include <array>
 #include "zinc/io/driver.h"
 #include "zinc/io/poscar.h"
 #include "zinc/io/xyz.h"
@@ -56,6 +57,37 @@ TEST(IOTest, PoscarWriteUsesFixedTenDecimalPlaces) {
   EXPECT_NE(text.find("      3.0000000000"), std::string::npos);
   EXPECT_NE(text.find("      0.1250000000"), std::string::npos);
   EXPECT_NE(text.find("     -1.5000000000"), std::string::npos);
+  std::filesystem::remove(path);
+}
+
+TEST(IOTest, PoscarOmitsSelectiveDynamicsWhenAllAtomsFree) {
+  auto path = std::filesystem::temp_directory_path() / "zinc-poscar-free.vasp";
+  zinc::core::Lattice lat(zinc::core::Vector3d(3.0,0,0), zinc::core::Vector3d(0,3.0,0), zinc::core::Vector3d(0,0,3.0));
+  zinc::core::Structure s(lat);
+  s.add_atom("Si", {0.0, 0.0, 0.0}, std::array<int, 3>{1, 1, 1});
+  s.add_atom("Si", {1.5, 1.5, 1.5});
+
+  PoscarDriver().write(s, path);
+  auto text = read_file(path);
+
+  EXPECT_EQ(text.find("Selective dynamics"), std::string::npos);
+  EXPECT_EQ(text.find("  T  T  T"), std::string::npos);
+  std::filesystem::remove(path);
+}
+
+TEST(IOTest, PoscarWritesSelectiveDynamicsWhenAnyAtomFixed) {
+  auto path = std::filesystem::temp_directory_path() / "zinc-poscar-fixed.vasp";
+  zinc::core::Lattice lat(zinc::core::Vector3d(3.0,0,0), zinc::core::Vector3d(0,3.0,0), zinc::core::Vector3d(0,0,3.0));
+  zinc::core::Structure s(lat);
+  s.add_atom("Si", {0.0, 0.0, 0.0}, std::array<int, 3>{0, 1, 1});
+  s.add_atom("Si", {1.5, 1.5, 1.5});
+
+  PoscarDriver().write(s, path);
+  auto text = read_file(path);
+
+  EXPECT_NE(text.find("Selective dynamics"), std::string::npos);
+  EXPECT_NE(text.find("  F  T  T"), std::string::npos);
+  EXPECT_NE(text.find("  T  T  T"), std::string::npos);
   std::filesystem::remove(path);
 }
 
